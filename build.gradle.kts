@@ -83,7 +83,7 @@ neoForge {
 sourceSets.main.get().resources.srcDir("src/generated/resources")
 
 dependencies {
-    implementation("curse.maven:pipez-443900:7806241")
+    implementation("curse.maven:pipez-443900:7904268")
 }
 
 val generateModMetadata by tasks.registering(ProcessResources::class) {
