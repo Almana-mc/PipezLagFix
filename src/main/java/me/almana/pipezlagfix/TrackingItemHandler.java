@@ -6,11 +6,11 @@ import org.jetbrains.annotations.NotNull;
 
 public class TrackingItemHandler implements IItemHandler {
     private final IItemHandler delegate;
-    private final Runnable onSuccess;
+    private boolean didExtract;
 
-    public TrackingItemHandler(IItemHandler delegate, Runnable onSuccess) {
+    public TrackingItemHandler(IItemHandler delegate) {
         this.delegate = delegate;
-        this.onSuccess = onSuccess;
+        this.didExtract = false;
     }
 
     @Override
@@ -32,9 +32,13 @@ public class TrackingItemHandler implements IItemHandler {
     public @NotNull ItemStack extractItem(int slot, int amount, boolean simulate) {
         ItemStack result = delegate.extractItem(slot, amount, simulate);
         if (!simulate && !result.isEmpty()) {
-            onSuccess.run();
+            this.didExtract = true;
         }
         return result;
+    }
+
+    public boolean didExtract() {
+        return didExtract;
     }
 
     @Override

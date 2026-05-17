@@ -3,6 +3,7 @@ plugins {
     id 'maven-publish'
     id 'idea'
     id 'net.minecraftforge.gradle' version '[6.0.16,6.2)'
+    id 'org.spongepowered.mixin' version '0.7.+'
 }
 
 version = "${minecraft_version}-${mod_version}"
@@ -25,6 +26,7 @@ minecraft {
 
             property 'forge.logging.markers', 'REGISTRIES'
             property 'forge.logging.console.level', 'debug'
+            arg "-mixin.config=pipezlagfix.mixins.json"
 
             mods {
                 "${mod_id}" {
@@ -71,9 +73,20 @@ dependencies {
     // Mixin annotation processor for refmap generation
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 
+    // MixinExtras
+    compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:0.5.4"))
+    implementation(jarJar("io.github.llamalad7:mixinextras-forge:0.5.4")) {
+        jarJar.ranged(it, "[0.5.4,)")
+    }
+
     // Pipez Dependency (Source: https://www.curseforge.com/minecraft/mc-mods/pipez)
     // File ID: 6945379 (1.20.1-1.2.26)
     implementation fg.deobf("curse.maven:pipez-443900:6945379")
+}
+
+mixin {
+    add sourceSets.main, "pipezlagfix.refmap.json"
+    config 'pipezlagfix.mixins.json'
 }
 
 // Expand properties in resource files (mods.toml, pack.mcmeta)
