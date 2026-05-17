@@ -1,7 +1,6 @@
 package me.almana.pipezlagfix.mixin;
 
 import com.llamalad7.mixinextras.sugar.Share;
-import com.llamalad7.mixinextras.sugar.ref.LocalBooleanRef;
 import com.llamalad7.mixinextras.sugar.ref.LocalRef;
 import de.maxhenkel.pipez.blocks.tileentity.PipeLogicTileEntity;
 import de.maxhenkel.pipez.blocks.tileentity.PipeTileEntity;
