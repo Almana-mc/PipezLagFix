@@ -149,6 +149,9 @@ jobs:
           distribution: temurin
           java-version: ${{ steps.meta.outputs.java_version }}
 
+      - name: Remove local Java home
+        run: sed -i '/^org.gradle.java.home=/d' gradle.properties
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
 
