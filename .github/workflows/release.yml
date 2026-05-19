@@ -152,6 +152,20 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-disabled: true
+
+      - name: Prepare Gradle Java toolchain
+        shell: bash
+        run: |
+          rm -f "$HOME/.m2/toolchains.xml"
+          rm -rf "$HOME/.gradle/caches/forge_gradle"
+          mkdir -p "$HOME/.gradle"
+          {
+            echo "org.gradle.java.installations.auto-detect=false"
+            echo "org.gradle.java.installations.fromEnv=JAVA_HOME"
+            echo "org.gradle.java.installations.paths=$JAVA_HOME"
+          } >> "$HOME/.gradle/gradle.properties"
 
       - name: Ensure gradlew is executable
         run: chmod +x ./gradlew
@@ -161,18 +175,16 @@ jobs:
         run: |
           gradle_args=(
             "-Dorg.gradle.java.home=$JAVA_HOME"
+            "-Dorg.gradle.java.installations.auto-detect=false"
+            "-Dorg.gradle.java.installations.fromEnv=JAVA_HOME"
+            "-Dorg.gradle.java.installations.paths=$JAVA_HOME"
             "-Dorg.gradle.parallel=false"
             "-Dorg.gradle.caching=false"
             "--no-daemon"
             "--console=plain"
           )
 
-          exclude_args=()
-          if ./gradlew "${gradle_args[@]}" tasks --all | grep -qE '^copyJar\s'; then
-            exclude_args=(-x copyJar)
-          fi
-
-          ./gradlew "${gradle_args[@]}" clean build "${exclude_args[@]}"
+          ./gradlew "${gradle_args[@]}" clean build
         env:
           CI: true
           BUILD_VERSION: ${{ steps.meta.outputs.release_tag }}
