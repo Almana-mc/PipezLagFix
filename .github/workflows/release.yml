@@ -151,7 +151,7 @@ jobs:
           java-version: ${{ steps.meta.outputs.java_version }}
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Ensure gradlew is executable
         run: chmod +x ./gradlew
@@ -159,13 +159,20 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          gradle_java_home="-Dorg.gradle.java.home=$JAVA_HOME"
+          gradle_args=(
+            "-Dorg.gradle.java.home=$JAVA_HOME"
+            "-Dorg.gradle.parallel=false"
+            "-Dorg.gradle.caching=false"
+            "--no-daemon"
+            "--console=plain"
+          )
+
           exclude_args=()
-          if ./gradlew "$gradle_java_home" tasks --all --console=plain | grep -qE '^copyJar\s'; then
+          if ./gradlew "${gradle_args[@]}" tasks --all | grep -qE '^copyJar\s'; then
             exclude_args=(-x copyJar)
           fi
 
-          ./gradlew "$gradle_java_home" clean build "${exclude_args[@]}" --console=plain
+          ./gradlew "${gradle_args[@]}" clean build "${exclude_args[@]}"
         env:
           CI: true
           BUILD_VERSION: ${{ steps.meta.outputs.release_tag }}
