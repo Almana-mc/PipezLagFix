@@ -1,5 +1,7 @@
 package me.almana.pipezlagfix.mixin;
 
+import com.llamalad7.mixinextras.sugar.Share;
+import com.llamalad7.mixinextras.sugar.ref.LocalRef;
 import de.maxhenkel.pipez.blocks.tileentity.PipeLogicTileEntity;
 import de.maxhenkel.pipez.blocks.tileentity.PipeTileEntity;
 import de.maxhenkel.pipez.blocks.tileentity.types.ItemPipeType;
@@ -19,14 +21,9 @@ import java.util.List;
 
 @Mixin(ItemPipeType.class)
 public class MixinItemPipeType {
-
-    @Unique
-    private final ThreadLocal<Boolean> pipezlagfix$success = ThreadLocal.withInitial(() -> false);
-
     @Inject(method = "insertEqually", at = @At("HEAD"), cancellable = true)
     public void startEqually(PipeLogicTileEntity tileEntity, Direction side,
-            List<PipeTileEntity.Connection> connections, IItemHandler itemHandler, CallbackInfo ci) {
-        pipezlagfix$success.set(false);
+                             List<PipeTileEntity.Connection> connections, IItemHandler itemHandler, CallbackInfo ci) {
         if (pipezlagfix$shouldSuppress(tileEntity, side)) {
             ci.cancel();
         }
@@ -34,33 +31,38 @@ public class MixinItemPipeType {
 
     @Inject(method = "insertOrdered", at = @At("HEAD"), cancellable = true)
     public void startOrdered(PipeLogicTileEntity tileEntity, Direction side,
-            List<PipeTileEntity.Connection> connections, IItemHandler itemHandler, CallbackInfo ci) {
-        pipezlagfix$success.set(false);
+                             List<PipeTileEntity.Connection> connections, IItemHandler itemHandler, CallbackInfo ci) {
         if (pipezlagfix$shouldSuppress(tileEntity, side)) {
             ci.cancel();
         }
     }
 
     @ModifyVariable(method = "insertEqually", at = @At("HEAD"), argsOnly = true)
-    public IItemHandler wrapHandlerEqually(IItemHandler handler) {
-        return new TrackingItemHandler(handler, () -> pipezlagfix$success.set(true));
+    public IItemHandler wrapHandlerEqually(IItemHandler handler,
+                                           @Share("tracker") LocalRef<TrackingItemHandler> tracked) {
+        tracked.set(new TrackingItemHandler(handler));
+        return tracked.get();
     }
 
     @ModifyVariable(method = "insertOrdered", at = @At("HEAD"), argsOnly = true)
-    public IItemHandler wrapHandlerOrdered(IItemHandler handler) {
-        return new TrackingItemHandler(handler, () -> pipezlagfix$success.set(true));
+    public IItemHandler wrapHandlerOrdered(IItemHandler handler,
+                                           @Share("tracker") LocalRef<TrackingItemHandler> tracked) {
+        tracked.set(new TrackingItemHandler(handler));
+        return tracked.get();
     }
 
     @Inject(method = "insertEqually", at = @At("RETURN"))
     public void endEqually(PipeLogicTileEntity tileEntity, Direction side, List<PipeTileEntity.Connection> connections,
-            IItemHandler itemHandler, CallbackInfo ci) {
-        pipezlagfix$applyBackoff(tileEntity, side);
+                           IItemHandler itemHandler, CallbackInfo ci,
+                           @Share("tracker") LocalRef<TrackingItemHandler> tracked) {
+        pipezlagfix$applyBackoff(tileEntity, side, tracked.get().didExtract());
     }
 
     @Inject(method = "insertOrdered", at = @At("RETURN"))
     public void endOrdered(PipeLogicTileEntity tileEntity, Direction side, List<PipeTileEntity.Connection> connections,
-            IItemHandler itemHandler, CallbackInfo ci) {
-        pipezlagfix$applyBackoff(tileEntity, side);
+                           IItemHandler itemHandler, CallbackInfo ci,
+                           @Share("tracker") LocalRef<TrackingItemHandler> tracked) {
+        pipezlagfix$applyBackoff(tileEntity, side, tracked.get().didExtract());
     }
 
     @Unique
@@ -73,29 +75,29 @@ public class MixinItemPipeType {
     }
 
     @Unique
-    private void pipezlagfix$applyBackoff(PipeLogicTileEntity tileEntity, Direction side) {
+    private void pipezlagfix$applyBackoff(PipeLogicTileEntity tileEntity, Direction side, boolean success) {
         if (!(tileEntity instanceof IItemPipeBackoff backoff)) {
             return;
         }
 
-        if (pipezlagfix$success.get()) {
+        int currentDelay = backoff.pipezlagfix$getBackoffDelay(side);
+        if (success) {
             // Success: Reset backoff
-            backoff.pipezlagfix$setBackoffDelay(side, 0);
-            backoff.pipezlagfix$setNextActiveTick(side, 0);
+            backoff.pipezlagfix$setBackoffDelay(side, currentDelay >> 1);
+            backoff.pipezlagfix$setNextActiveTick(side, tileEntity.getLevel().getGameTime() + (currentDelay >> 1) + 1);
         } else {
             // Failure: Exponential Backoff
             int baseDelay = Config.baseBackoffTicks;
             int maxDelay = Config.maxBackoffTicks;
-            int currentDelay = backoff.pipezlagfix$getBackoffDelay(side);
 
             // Correct initialization: if current is 0, start at base. Else double.
-            int newDelay = (currentDelay == 0) ? baseDelay : currentDelay * 2;
+            int newDelay = (currentDelay == 0) ? baseDelay : currentDelay << 1;
 
             // Apply cap
             newDelay = Math.min(newDelay, maxDelay);
 
             backoff.pipezlagfix$setBackoffDelay(side, newDelay);
-            backoff.pipezlagfix$setNextActiveTick(side, tileEntity.getLevel().getGameTime() + newDelay);
+            backoff.pipezlagfix$setNextActiveTick(side, tileEntity.getLevel().getGameTime() + newDelay + 1);
         }
     }
 }
