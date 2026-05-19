@@ -8,11 +8,11 @@ import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 public class TrackingItemHandler implements ResourceHandler<ItemResource> {
     private final ResourceHandler<ItemResource> delegate;
     private final SuccessJournal successJournal = new SuccessJournal();
-    private final Runnable onSuccess;
+    private boolean didExtract;
 
-    public TrackingItemHandler(ResourceHandler<ItemResource> delegate, Runnable onSuccess) {
+    public TrackingItemHandler(ResourceHandler<ItemResource> delegate) {
         this.delegate = delegate;
-        this.onSuccess = onSuccess;
+        this.didExtract = false;
     }
 
     @Override
@@ -75,7 +75,11 @@ public class TrackingItemHandler implements ResourceHandler<ItemResource> {
 
         @Override
         protected void onRootCommit(Boolean snapshot) {
-            onSuccess.run();
+            didExtract = true;
         }
+    }
+
+    public boolean didExtract() {
+        return didExtract;
     }
 }
